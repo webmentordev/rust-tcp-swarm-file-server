@@ -137,12 +137,27 @@ impl Server {
                 let mut response = String::new();
                 let mut reader = BufReader::new(stream.try_clone()?);
                 reader.read_line(&mut response)?;
-                let response = response.trim();
-                println!("Server: {}", response);
+                println!("Server: {}", response.trim());
 
-                if response.contains("left") {
-                    fs::remove_file("config.txt")?;
-                    println!("Config file has been deleted!")
+                let mut files: Vec<String> = Vec::new();
+                loop {
+                    response.clear();
+                    let bytes_read = reader.read_line(&mut response)?;
+                    if bytes_read == 0 {
+                        break;
+                    }
+                    let line = response.trim();
+                    if line.contains("done") {
+                        break;
+                    }
+                    if line.is_empty() {
+                        continue;
+                    }
+                    files.push(line.to_string());
+                }
+
+                for filename in files {
+                    println!("📄 {filename}");
                 }
             }
             None => {
@@ -292,7 +307,7 @@ impl Server {
             }
 
             "LIST" => {
-                writeln!(stream, "Collecting from servers...")?;
+                writeln!(stream, "Collecting data from servers...")?;
                 let db = db.lock().unwrap();
                 let mut stmt =
                     db.prepare("SELECT ip_address, port FROM servers WHERE has_left = 0")?;
@@ -312,7 +327,8 @@ impl Server {
                 }
                 writeln!(stream, "Active servers: {}", active_servers.len())?;
                 for (ip, port) in &active_servers {
-                    writeln!(stream, "  {} : {}", ip, port)?;
+                    println!("{ip}:{port}");
+                    // writeln!(stream, "  {} : {}", ip, port)?;
                 }
             }
             _ => {

@@ -3,3 +3,5 @@
 /client
 /*.db
 /config.txt
+/server_*
+/storage/*
