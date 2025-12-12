@@ -325,11 +325,47 @@ impl Server {
                         }
                     }
                 }
-                writeln!(stream, "Active servers: {}", active_servers.len())?;
                 for (ip, port) in &active_servers {
-                    println!("{ip}:{port}");
-                    // writeln!(stream, "  {} : {}", ip, port)?;
+                    // println!("{ip}:{port}");
+                    let mut streaming = TcpStream::connect(format!("{}:{}", ip, port))?;
+                    writeln!(streaming, "FILES")?;
+
+                    let mut reader = BufReader::new(streaming.try_clone()?);
+                    let mut response = String::new();
+
+                    loop {
+                        response.clear();
+                        reader.read_line(&mut response)?;
+                        let line = response.trim();
+                        if line.contains("DONE") {
+                            break;
+                        }
+                        if line.is_empty() {
+                            continue;
+                        }
+                        writeln!(stream, "{}", line)?;
+                    }
                 }
+            }
+
+            "FILES" => {
+                let entries = match fs::read_dir("storage") {
+                    Ok(entries) => entries,
+                    Err(e) => {
+                        println!("Error reading directory: {}", e);
+                        return Ok(());
+                    }
+                };
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let file_name = entry.file_name().to_string_lossy().to_string();
+                        let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+                        if !is_dir {
+                            writeln!(stream, "{}", file_name)?;
+                        }
+                    }
+                }
+                writeln!(stream, "DONE")?;
             }
             _ => {
                 writeln!(stream, "Unknown command!")?;
