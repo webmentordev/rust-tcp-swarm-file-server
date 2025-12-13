@@ -326,13 +326,13 @@ impl Server {
                     }
                 }
                 for (ip, port) in &active_servers {
-                    // println!("{ip}:{port}");
-                    let mut streaming = TcpStream::connect(format!("{}:{}", ip, port))?;
+                    let mut streaming = match TcpStream::connect(format!("{}:{}", ip, port)) {
+                        Ok(stream) => stream,
+                        Err(_) => continue,
+                    };
                     writeln!(streaming, "FILES")?;
-
                     let mut reader = BufReader::new(streaming.try_clone()?);
                     let mut response = String::new();
-
                     loop {
                         response.clear();
                         reader.read_line(&mut response)?;
@@ -455,7 +455,6 @@ fn print_usage() {
     println!("||  * join <ip_address:port> <master_key>    - Join the running network");
     println!("||  * leave                                  - Leave the network");
     println!("||  * list                                   - List all active servers");
-    println!("||  * status <ip_address>                    - Check server status");
     println!("||  * help                                   - Show this message");
     println!("=========================================================================");
 }
